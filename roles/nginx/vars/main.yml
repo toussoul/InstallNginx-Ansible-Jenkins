@@ -1,0 +1,5 @@
+---
+sites:
+  - test1.local
+  - test2.local
+# vars file for nginx

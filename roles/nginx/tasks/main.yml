@@ -1,0 +1,86 @@
+---
+- name: creation du directory www
+  file:
+   path: /var/www/
+   state: directory
+   recurse: yes
+   owner: root
+   group: root
+   mode: 0755
+
+- name: creation des directory html
+  file:
+   path: /var/www/{{ item }}/html
+   state: directory
+   owner: root
+   group: root
+   mode: 0755
+  loop:
+    "{{ sites }}"
+
+- name: install nginx
+  yum:
+   name: nginx
+   state: present
+
+- name: copie html file 1
+  template:
+   src: "server.j2"
+   dest: /var/www/{{ item }}/html/index.html
+  loop:
+     "{{ sites }}"
+
+- name: creation des répertoire site
+  file:
+   path: /etc/nginx/{{ item }}
+   state: directory
+   owner: root
+   group: root
+   mode: 0755
+  loop:
+    - sites-enabled
+    - sites-available
+
+- name: "insertion ligne include dans nginx.conf"
+  lineinfile:
+   path: /etc/nginx/nginx.conf
+   insertbefore: "^# Setting"
+   line: "    include /etc/nginx/sites-enabled/*.conf;"
+
+- name: create server block file
+  template:
+   src: "serverconf.j2"
+   dest: /etc/nginx/sites-available/{{ item }}.conf
+  loop:
+     "{{ sites }}"
+
+- name: Create a symbolic link
+  file:
+   src: /etc/nginx/sites-available/{{ item }}.conf
+   dest: /etc/nginx/sites-enabled/{{ item }}.conf
+   owner: root
+   group: root
+   state: link
+  loop:
+    "{{ sites }}"
+
+- name: restart and enable systemd nginx service
+  systemd:
+   name: nginx
+   enabled: yes
+   state: restarted
+
+- name: permit traffic in default zone for https service
+  firewalld:
+   service: http
+   permanent: yes
+   state: enabled
+
+- name: restart and enable systemd nginx service
+  systemd:
+   name: firewalld
+   enabled: yes
+   state: restarted
+
+# tasks file for nginx
+
